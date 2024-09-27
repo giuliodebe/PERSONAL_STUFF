@@ -82,25 +82,22 @@ class RotationMatrixInput(InputWidget):
         return np.array([[float(input.text()) for input in row] for row in self.inputs])
 
 class AxisAngleInput(InputWidget):
-    """Widget for Axis-Angle input."""
+    """Widget for Axis-Angle input with separate angles for each axis."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.inputs = self.create_input_fields(['x', 'y', 'z', 'angle'])
-        self.inputs[0].setText("1")  # Set default axis to [1, 0, 0]
-        self.inputs[1].setText("0")
-        self.inputs[2].setText("0")
-        for i, (label, input_field) in enumerate(zip(['x', 'y', 'z', 'angle'], self.inputs)):
+        self.inputs = self.create_input_fields(['X Rotation', 'Y Rotation', 'Z Rotation'])
+        for i, (label, input_field) in enumerate(zip(['X Rotation', 'Y Rotation', 'Z Rotation'], self.inputs)):
             self.layout.addWidget(QLabel(f'{label}:'), i, 0)
             self.layout.addWidget(input_field, i, 1)
         self.units = QComboBox()
         self.units.addItems(['Radians', 'Degrees'])
-        self.layout.addWidget(QLabel('Angle Units:'), 4, 0)
-        self.layout.addWidget(self.units, 4, 1)
+        self.layout.addWidget(QLabel('Angle Units:'), 3, 0)
+        self.layout.addWidget(self.units, 3, 1)
 
     def get_data(self) -> np.ndarray:
         data = np.array([float(input.text()) for input in self.inputs])
         if self.units.currentText() == 'Degrees':
-            data[3] = np.radians(data[3])
+            data = np.radians(data)
         return data
     
 class AngleConverter(QWidget):
@@ -110,7 +107,19 @@ class AngleConverter(QWidget):
         self.initUI()
 
     def initUI(self):
+        self.setWindowTitle('Angle Converter')
+        self.setStyleSheet("""
+            QWidget { background-color: #2b2b2b; color: #ffffff; }
+            QLineEdit, QTextEdit { background-color: #3b3b3b; border: 1px solid #555555; }
+            QPushButton { background-color: #1565c0; padding: 5px; }
+            QPushButton:hover { background-color: #1000c0; }
+            QComboBox { background-color: #3b3b3b; border: 1px solid #555555; padding: 5px; }
+            QTabBar::tab { background-color: #1000c10c10c; color: #000309; }
+            QTabBar::tab:selected { background-color: #800c; }
+        """)
+
         layout = QVBoxLayout()
+        self.setLayout(layout)
 
         # Input
         input_layout = QHBoxLayout()
@@ -147,12 +156,21 @@ class AngleConverter(QWidget):
         layout.addLayout(button_layout)
 
 
+        # Label layout
+        label_layout = QHBoxLayout()
+        label_layout.addStretch()
+
+        self.output_label = QLabel('OUTPUT:')
+        self.output_label.setAlignment(Qt.AlignCenter)
+        label_layout.addWidget(self.output_label)
+        label_layout.addStretch()
+        layout.addLayout(label_layout)
+        
         # Output
         self.output = QTextEdit()
         self.output.setReadOnly(True)
         self.output.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.output.setMaximumHeight(200)  # Limit the height of the output tabs
-        layout.addWidget(QLabel('OUTPUT:'))
         layout.addWidget(self.output)
 
         self.setLayout(layout)
@@ -382,20 +400,50 @@ class OrientationConverter(QMainWindow):
             elif input_type == 'Rotation Matrix':
                 r = R.from_matrix(input_data)
             elif input_type == 'Axis-Angle':
-                r = R.from_rotvec(input_data[:3] * input_data[3])
+                r = R.from_euler('xyz', input_data)
 
             quat = r.as_quat()
             euler = r.as_euler('xyz')
             matrix = r.as_matrix()
             rotvec = r.as_rotvec()
 
+            # Quaternion output
             self.quaternion_output.setText(f"w: {quat[0]:.6f}\nx: {quat[1]:.6f}\ny: {quat[2]:.6f}\nz: {quat[3]:.6f}")
+            
+            # Euler angles output
             self.euler_angles_output.setText(f"Radians:\nRoll: {euler[0]:.6f}\nPitch: {euler[1]:.6f}\nYaw: {euler[2]:.6f}\n\n"
                                              f"Degrees:\nRoll: {np.degrees(euler[0]):.6f}\nPitch: {np.degrees(euler[1]):.6f}\nYaw: {np.degrees(euler[2]):.6f}")
-            self.rotation_matrix_output.setText("\n".join([" ".join([f"{val:.6f}" for val in row]) for row in matrix]))
-            self.axis_angle_output.setText(f"Axis:\nx: {rotvec[0]:.6f}\ny: {rotvec[1]:.6f}\nz: {rotvec[2]:.6f}\n\n"
-                                           f"Angle (rad): {np.linalg.norm(rotvec):.6f}\n"
-                                           f"Angle (deg): {np.degrees(np.linalg.norm(rotvec)):.6f}")
+           
+            # Rotation matrix output
+            matrix_output  = "⎡                              ⎤   ⎡   ⎤\n"
+            matrix_output += "⎢ {:8.4f}  {:8.4f}  {:8.4f} ⎥ → ⎢ x ⎥\n".format(matrix[0, 0], matrix[0, 1], matrix[0, 2])
+            matrix_output += "⎢ {:8.4f}  {:8.4f}  {:8.4f} ⎥ → ⎢ y ⎥\n".format(matrix[1, 0], matrix[1, 1], matrix[1, 2])
+            matrix_output += "⎢ {:8.4f}  {:8.4f}  {:8.4f} ⎥ → ⎢ z ⎥\n".format(matrix[2, 0], matrix[2, 1], matrix[2, 2])
+            matrix_output += "⎣                              ⎦   ⎣   ⎦\n"
+            matrix_output += "     ↓         ↓         ↓\n"
+            matrix_output += "     x         y         z"
+            self.rotation_matrix_output.setFont(QFont("Courier"))
+            self.rotation_matrix_output.setText(matrix_output)
+
+            # Axis-angle output
+            angle = np.linalg.norm(rotvec)
+            axis = rotvec / angle if angle != 0 else np.array([0, 0, 1])
+            x_rotation, y_rotation, z_rotation = euler
+            self.axis_angle_output.setText(
+                f"Combined Axis-Angle:\n"
+                f"Axis: x: {axis[0]:.6f}, y: {axis[1]:.6f}, z: {axis[2]:.6f}\n"
+                f"Angle (rad): {angle:.6f}\n"
+                f"Angle (deg): {np.degrees(angle):.6f}\n\n"
+                f"Separate Axis Rotations:\n"
+                f"Radians:\n"
+                f"X: {x_rotation:.6f}\n"
+                f"Y: {y_rotation:.6f}\n"
+                f"Z: {z_rotation:.6f}\n\n"
+                f"Degrees:\n"
+                f"X: {np.degrees(x_rotation):.6f}\n"
+                f"Y: {np.degrees(y_rotation):.6f}\n"
+                f"Z: {np.degrees(z_rotation):.6f}"
+                  )
 
             # Store the current rotation for visualization
             self.current_rotation = r
