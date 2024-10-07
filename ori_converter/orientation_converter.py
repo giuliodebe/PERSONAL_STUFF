@@ -448,7 +448,7 @@ class OrientationConverter(QMainWindow):
             # Store the current rotation for visualization
             self.current_rotation = r
 
-        except Exception as e:
+        except Exception as e: 
             error_message = f"Error: {str(e)}"
             logging.error(f"Error in OrientationConverter.convert: {error_message}")
             logging.debug(traceback.format_exc())
