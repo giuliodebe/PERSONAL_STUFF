@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("IP_app")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3737f4cb7bc80a7c231af64b39940f2a1e6fc519")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+43e02cbd957f77cf331d13865ba6f9e503a258d1")]
 [assembly: System.Reflection.AssemblyProductAttribute("IP_app")]
 [assembly: System.Reflection.AssemblyTitleAttribute("IP_app")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
